@@ -17,7 +17,7 @@ export class PeerSignalClient extends EventEmitter {
     this.code = null;
     this.isHost = false;
     this.iceServers = options.iceServers || DEFAULT_ICE_SERVERS;
-    this.peers = new Map(); // peerId -> RTCPeerConnection
+    this.peers = new Map(); // peerId -> { pc, pendingCandidates, hasRemoteDescription }
     this.name = options.name || 'Anonymous';
   }
 
@@ -120,7 +120,14 @@ export class PeerSignalClient extends EventEmitter {
 
   async _createPeerConnection(peerId, isOfferer) {
     const pc = new RTCPeerConnection({ iceServers: this.iceServers });
-    this.peers.set(peerId, pc);
+    
+    // Store peer state with candidate buffer
+    const peerState = {
+      pc,
+      pendingCandidates: [],
+      hasRemoteDescription: false
+    };
+    this.peers.set(peerId, peerState);
 
     // Data channel
     let dataChannel;
@@ -134,7 +141,7 @@ export class PeerSignalClient extends EventEmitter {
       };
     }
 
-    // ICE candidates
+    // Trickle ICE - send candidates in realtime as discovered
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         this.rpc.methods.signal({
@@ -160,7 +167,7 @@ export class PeerSignalClient extends EventEmitter {
       });
     }
 
-    return pc;
+    return peerState;
   }
 
   _setupDataChannel(channel, peerId) {
@@ -177,57 +184,111 @@ export class PeerSignalClient extends EventEmitter {
     };
 
     // Store reference
-    const pc = this.peers.get(peerId);
-    if (pc) pc.dataChannel = channel;
+    const peerState = this.peers.get(peerId);
+    if (peerState) peerState.dataChannel = channel;
   }
 
   async _handleSignal(from, payload) {
-    let pc = this.peers.get(from);
+    let peerState = this.peers.get(from);
 
     if (payload.type === 'offer') {
       // Create peer connection if not exists
-      if (!pc) {
-        pc = await this._createPeerConnection(from, false);
+      if (!peerState) {
+        peerState = await this._createPeerConnection(from, false);
       }
+      
+      const { pc, pendingCandidates } = peerState;
       await pc.setRemoteDescription({ type: 'offer', sdp: payload.sdp });
+      peerState.hasRemoteDescription = true;
+      
+      // Flush any buffered candidates
+      if (pendingCandidates.length > 0) {
+        for (const candidate of pendingCandidates) {
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (e) {
+            console.warn('Error adding buffered candidate:', e);
+          }
+        }
+        pendingCandidates.length = 0;
+      }
+      
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await this.rpc.methods.signal({
         to: from,
         payload: { type: 'answer', sdp: answer.sdp }
       });
+      
     } else if (payload.type === 'answer') {
-      if (pc) {
+      if (peerState) {
+        const { pc, pendingCandidates } = peerState;
         await pc.setRemoteDescription({ type: 'answer', sdp: payload.sdp });
+        peerState.hasRemoteDescription = true;
+        
+        // Flush any buffered candidates
+        if (pendingCandidates.length > 0) {
+          for (const candidate of pendingCandidates) {
+            try {
+              await pc.addIceCandidate(candidate);
+            } catch (e) {
+              console.warn('Error adding buffered candidate:', e);
+            }
+          }
+          pendingCandidates.length = 0;
+        }
       }
+      
     } else if (payload.type === 'candidate') {
-      if (pc) {
-        await pc.addIceCandidate(payload.candidate);
+      if (!peerState) {
+        // Peer connection doesn't exist yet - this shouldn't happen but buffer just in case
+        console.warn('Received candidate before peer connection exists, buffering');
+        // Create a temporary buffer that will be picked up when connection is created
+        this._earlyCandidate = this._earlyCandidate || new Map();
+        if (!this._earlyCandidate.has(from)) {
+          this._earlyCandidate.set(from, []);
+        }
+        this._earlyCandidate.get(from).push(payload.candidate);
+        return;
+      }
+      
+      const { pc, pendingCandidates, hasRemoteDescription } = peerState;
+      
+      if (!hasRemoteDescription) {
+        // Buffer candidates until we have remote description
+        pendingCandidates.push(payload.candidate);
+      } else {
+        // Apply immediately
+        try {
+          await pc.addIceCandidate(payload.candidate);
+        } catch (e) {
+          console.warn('Error adding ICE candidate:', e);
+        }
       }
     }
   }
 
   _cleanupPeer(peerId) {
-    const pc = this.peers.get(peerId);
-    if (pc) {
-      pc.close();
+    const peerState = this.peers.get(peerId);
+    if (peerState) {
+      peerState.pc.close();
       this.peers.delete(peerId);
     }
   }
 
   send(peerId, data) {
-    const pc = this.peers.get(peerId);
-    if (pc && pc.dataChannel && pc.dataChannel.readyState === 'open') {
-      pc.dataChannel.send(data);
+    const peerState = this.peers.get(peerId);
+    if (peerState && peerState.dataChannel && peerState.dataChannel.readyState === 'open') {
+      peerState.dataChannel.send(data);
       return true;
     }
     return false;
   }
 
   broadcast(data) {
-    for (const [_peerId, pc] of this.peers) {
-      if (pc.dataChannel && pc.dataChannel.readyState === 'open') {
-        pc.dataChannel.send(data);
+    for (const [_peerId, peerState] of this.peers) {
+      if (peerState.dataChannel && peerState.dataChannel.readyState === 'open') {
+        peerState.dataChannel.send(data);
       }
     }
   }
