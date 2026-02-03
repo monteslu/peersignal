@@ -1,6 +1,6 @@
 {
   "name": "peersignal",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "PeerSignal client - WebRTC signaling with code-based pairing",
   "main": "index.js",
   "module": "index.js",
@@ -15,6 +15,7 @@
   },
   "files": [
     "index.js",
+    "browser.js",
     "lib/",
     "dist/"
   ],
@@ -36,7 +37,7 @@
   },
   "homepage": "https://github.com/monteslu/peersignal#readme",
   "scripts": {
-    "build": "esbuild index.js --bundle --minify --format=iife --global-name=PeerSignal --outfile=dist/peersignal.min.js --platform=browser --external:node-datachannel",
+    "build": "esbuild browser.js --bundle --minify --format=iife --global-name=PeerSignal --outfile=dist/peersignal.min.js --platform=browser",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "lint": "eslint ."
