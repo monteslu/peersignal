@@ -1,5 +1,9 @@
 # peersignal
 
+[![npm version](https://img.shields.io/npm/v/peersignal.svg)](https://www.npmjs.com/package/peersignal)
+[![CI](https://github.com/monteslu/peersignal/actions/workflows/ci.yml/badge.svg)](https://github.com/monteslu/peersignal/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 WebRTC signaling client with code-based P2P pairing. Works in **Node.js** and **browsers**.
 
 Share a simple code (like `k7m-p2x-9nf`), connect peer-to-peer, send data directly. No complex setup.
@@ -115,7 +119,7 @@ Create a client instance.
 | `peer:connected` | `{ peerId }` | WebRTC connection established |
 | `peer:disconnected` | `{ peerId }` | Peer disconnected |
 | `datachannel:open` | `{ peerId, channel }` | Data channel ready |
-| `datachannel:close` | `{ peerId }` | Data channel closed |
+| `datachannel:closed` | `{ peerId }` | Data channel closed |
 | `datachannel:message` | `{ peerId, data }` | Message received |
 | `host:disconnected` | - | Host went offline |
 | `host:reconnected` | `{ hostId }` | Host came back |
@@ -144,11 +148,11 @@ npx peersignal-server --port 3000
 
 ```
 ┌──────────┐         ┌──────────┐         ┌──────────┐
-│   Host   │◄───────►│  Server  │◄───────►│   Peer   │
+│   Host   │◄────────►│  Server  │◄────────►│   Peer   │
 └──────────┘  signal └──────────┘  signal └──────────┘
-      ▲                                         ▲
-      │          WebRTC (direct P2P)            │
-      └─────────────────────────────────────────┘
+      ▲                                          ▲
+      │          WebRTC (direct P2P)             │
+      └──────────────────────────────────────────┘
 ```
 
 1. **Host** creates room → gets code
