@@ -149,12 +149,11 @@ npx peersignal-server --port 3000
 ## How It Works
 
 ```
-┌──────────┐         ┌──────────┐         ┌──────────┐
-│  Peer A  │◄────────►│  Server  │◄────────►│  Peer B  │
-└──────────┘  signal └──────────┘  signal └──────────┘
-      ▲                                          ▲
-      │          WebRTC (direct P2P)             │
-      └──────────────────────────────────────────┘
+  +----------+                        +----------+
+  |  Peer A  |<------- WebRTC ------->|  Peer B  |
+  +----+-----+      (direct P2P)      +----+-----+
+       |                                   |
+       +---> Signaling Server <------------+
 ```
 
 1. **Peer A** creates room → gets code
