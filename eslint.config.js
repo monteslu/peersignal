@@ -11,6 +11,8 @@ export default [
         process: 'readonly',
         window: 'readonly',
         RTCPeerConnection: 'readonly',
+        RTCSessionDescription: 'readonly',
+        RTCIceCandidate: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly'
       }
