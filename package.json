@@ -4,6 +4,23 @@
   "description": "PeerSignal client - WebRTC signaling with code-based pairing",
   "main": "index.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monteslu/peersignal.git"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "peer",
+    "p2p",
+    "datachannel"
+  ],
+  "author": "Luis Montes",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/monteslu/peersignal/issues"
+  },
+  "homepage": "https://github.com/monteslu/peersignal#readme",
   "scripts": {
     "test": "vitest run",
     "lint": "eslint ."
