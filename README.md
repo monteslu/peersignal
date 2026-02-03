@@ -22,10 +22,13 @@ Share a simple code (like `k7m-p2x-9nf`), connect peer-to-peer, send data direct
 npm install peersignal
 ```
 
-For Node.js, also install the WebRTC implementation:
+Or use directly in browsers via CDN:
 
-```bash
-npm install node-datachannel
+```html
+<script src="https://unpkg.com/peersignal"></script>
+<script>
+  const client = PeerSignal.createClient('https://your-server.com');
+</script>
 ```
 
 ## Quick Start
@@ -37,13 +40,15 @@ const client = createClient('https://your-server.com');
 await client.connect();
 ```
 
-### Host
+### Creating a Room
+
+The peer who creates the room gets a code to share:
 
 ```js
 const { code } = await client.createRoom();
 console.log('Share this code:', code); // e.g., "k7m-p2x-9nf"
 
-// Peers are auto-approved by default - just wait for connection
+// Wait for peers to connect (auto-approved by default)
 client.on('datachannel:open', ({ peerId }) => {
   client.send(peerId, 'Welcome!');
 });
@@ -53,7 +58,9 @@ client.on('datachannel:message', ({ peerId, data }) => {
 });
 ```
 
-### Peer
+> **Note:** The room creator is still a peer - all connections are direct P2P. There's no central server relaying messages.
+
+### Joining a Room
 
 ```js
 await client.joinRoom('k7m-p2x-9nf', 'Alice');
@@ -78,7 +85,6 @@ const client = createClient('https://your-server.com', {
 
 client.on('peer:request', ({ peerId, name }) => {
   console.log(`${name} wants to join`);
-  // Approve or deny
   client.approvePeer(peerId, true);  // or false to deny
 });
 ```
@@ -113,24 +119,20 @@ Create a client instance.
 |-------|---------|-------------|
 | `connected` | - | Connected to signaling server |
 | `disconnected` | - | Disconnected from server |
-| `peer:request` | `{ peerId, name }` | Peer wants to join (fires before auto-approve) |
-| `peer:approved` | `{ hostId }` | Approved by host (peer only) |
-| `peer:denied` | - | Denied by host (peer only) |
+| `peer:request` | `{ peerId, name }` | Peer wants to join |
+| `peer:approved` | `{ hostId }` | Approved by room creator |
+| `peer:denied` | - | Denied by room creator |
 | `peer:connected` | `{ peerId }` | WebRTC connection established |
 | `peer:disconnected` | `{ peerId }` | Peer disconnected |
 | `datachannel:open` | `{ peerId, channel }` | Data channel ready |
 | `datachannel:closed` | `{ peerId }` | Data channel closed |
 | `datachannel:message` | `{ peerId, data }` | Message received |
-| `host:disconnected` | - | Host went offline |
-| `host:reconnected` | `{ hostId }` | Host came back |
+| `host:disconnected` | - | Room creator went offline |
+| `host:reconnected` | `{ hostId }` | Room creator came back |
 
 ## Node.js Support
 
-peersignal works in Node.js via [node-datachannel](https://github.com/murat-dogan/node-datachannel).
-
-```bash
-npm install node-datachannel
-```
+Works automatically - `node-datachannel` is an optional dependency that installs with the package.
 
 The library auto-detects the environment:
 - **Node.js** → node-datachannel
@@ -148,17 +150,19 @@ npx peersignal-server --port 3000
 
 ```
 ┌──────────┐         ┌──────────┐         ┌──────────┐
-│   Host   │◄────────►│  Server  │◄────────►│   Peer   │
+│  Peer A  │◄────────►│  Server  │◄────────►│  Peer B  │
 └──────────┘  signal └──────────┘  signal └──────────┘
       ▲                                          ▲
       │          WebRTC (direct P2P)             │
       └──────────────────────────────────────────┘
 ```
 
-1. **Host** creates room → gets code
-2. **Peer** joins with code → auto-approved (or manual)
+1. **Peer A** creates room → gets code
+2. **Peer B** joins with code → auto-approved (or manual)
 3. **WebRTC** negotiation via signaling server
 4. **Data channels** open for direct P2P messaging
+
+The signaling server only helps establish the connection - all data flows directly between peers.
 
 ## License
 
