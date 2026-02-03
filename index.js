@@ -1,3 +1,4 @@
+import rtc from './lib/rtc.js';
 import { io } from 'socket.io-client';
 import rawr from 'rawr';
 import { EventEmitter } from 'events';
@@ -19,6 +20,7 @@ export class PeerSignalClient extends EventEmitter {
     this.iceServers = options.iceServers || DEFAULT_ICE_SERVERS;
     this.peers = new Map(); // peerId -> { pc, pendingCandidates, hasRemoteDescription }
     this.name = options.name || 'Anonymous';
+    this.autoApprove = options.autoApprove !== false; // default: true
   }
 
   connect() {
@@ -42,6 +44,10 @@ export class PeerSignalClient extends EventEmitter {
       // Server-initiated events
       this.socket.on('peer:request', ({ peerId, name }) => {
         this.emit('peer:request', { peerId, name });
+        // Auto-approve if enabled (default)
+        if (this.autoApprove) {
+          this.approvePeer(peerId, true);
+        }
       });
 
       this.socket.on('peer:approved', ({ hostId }) => {
@@ -119,7 +125,7 @@ export class PeerSignalClient extends EventEmitter {
   }
 
   async _createPeerConnection(peerId, isOfferer) {
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const pc = rtc.createPeerConnection(this.iceServers);
     
     // Store peer state with candidate buffer
     const peerState = {
@@ -241,9 +247,8 @@ export class PeerSignalClient extends EventEmitter {
       
     } else if (payload.type === 'candidate') {
       if (!peerState) {
-        // Peer connection doesn't exist yet - this shouldn't happen but buffer just in case
+        // Peer connection doesn't exist yet - buffer for later
         console.warn('Received candidate before peer connection exists, buffering');
-        // Create a temporary buffer that will be picked up when connection is created
         this._earlyCandidate = this._earlyCandidate || new Map();
         if (!this._earlyCandidate.has(from)) {
           this._earlyCandidate.set(from, []);
