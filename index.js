@@ -225,7 +225,7 @@ export class PeerSignalClient extends EventEmitter {
   }
 
   broadcast(data) {
-    for (const [peerId, pc] of this.peers) {
+    for (const [_peerId, pc] of this.peers) {
       if (pc.dataChannel && pc.dataChannel.readyState === 'open') {
         pc.dataChannel.send(data);
       }

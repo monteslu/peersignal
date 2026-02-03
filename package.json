@@ -6,15 +6,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "eslint ."
   },
-  "keywords": ["webrtc", "signaling", "p2p", "peer", "client"],
-  "author": "Luis Montes",
-  "license": "MIT",
   "dependencies": {
-    "rawr": "^3.0.0",
+    "rawr": "^1.0.0",
     "socket.io-client": "^4.7.0"
   },
   "devDependencies": {
