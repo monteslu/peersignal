@@ -10,11 +10,15 @@
   },
   "dependencies": {
     "rawr": "^1.0.0",
-    "socket.io-client": "^4.7.0"
+    "socket.io-client": "^4.7.0",
+    "debug": "^4.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",
     "vitest": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "node-datachannel": "^0.32.0"
   }
 }
